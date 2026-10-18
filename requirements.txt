@@ -1,0 +1,5 @@
+mcp
+nobodywho
+duckduckgo-mcp-server[browser]
+# The Playwright MCP server is a Node.js package, not a Python SDK:
+# install it with "npm install -g @playwright/mcp" (see project_setup.md)
