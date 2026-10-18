@@ -164,7 +164,7 @@ and the main loop defines exactly what to say:
     """
 ```
 
-See what this does: it **names the tools and tells the model which tool to use for each kind of question**. Without this, the 2B model sometimes just answers from memory (making up a price). With it, tool selection is reliable.
+See what this does: it **names the tools and tells the model which tool to use for each kind of question**. Without this, the E2B model sometimes just answers from memory (making up a price). With it, tool selection is reliable.
 
 The third question gets the opposite hint:
 

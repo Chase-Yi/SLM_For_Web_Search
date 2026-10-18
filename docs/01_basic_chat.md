@@ -14,13 +14,15 @@ src/basic_chat.py
 
 | Term | Meaning in one line |
 |---|---|
-| **SLM / LLM** | The neural network that reads text and writes text (here: Gemma 4 E2B, about 2 billion parameters — "small") |
+| **SLM / LLM** | The neural network that reads text and writes text (here: Gemma 4 E2B — 2.3B *effective* parameters, "small") |
 | **GGUF** | A file format that packs an entire model into one file so it can run locally |
 | **Quantization** | Compressing the model's numbers to fewer bits (we use "Q2", ~2-bit) → smaller file, runs on CPU, slightly dumber |
 | **Token** | The unit models think in — roughly ¾ of a word. Everything (context, limits) is measured in tokens |
 | **Context window (`n_ctx`)** | How many tokens the model can "keep in mind" at once, including the whole conversation |
 | **Sampler** | The rules for picking each next token: how random (`temperature`), and what shape the output may have (JSON schema) |
 | **System prompt** | The standing instruction that tells the model how to behave |
+
+> **About the name "E2B":** the "E" stands for "effective". The model file holds about 5B numbers, but only **2.3B** of them ("effective parameters") do the heavy computing; the rest are large lookup tables that cost almost nothing to use. That is why a file this size runs as light as a 2.3B model.
 
 Reference: nobodywho Python docs — https://docs.nobodywho.ai/python/ (chapters: Getting started, Chat, Sampling, Tool calling).
 

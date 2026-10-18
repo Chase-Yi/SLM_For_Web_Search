@@ -33,7 +33,7 @@ We wanted a local AI assistant that can answer questions about current web data 
 
 The tool combination becomes the "hands" of a **local small language model** (Gemma 4 E2B, compressed so it runs even without a GPU) — reproducing the "ask an LLM → it searches → it answers" experience at zero cost.
 
-And one big honest lesson, documented in depth in [Chapter 4.6](./04_mcp_tool_calling.md#46-the-small-model-limitation-story): a 2B model is *not* a self-working agent that can plan and finish a whole task alone. It took rounds of redesign (a→b→c→d) before the architecture settled: **the SLM gets only the small text jobs; everything else is forced by code** — the *harness*. That discovery is half the value of this project.
+And one big honest lesson, documented in depth in [Chapter 4.6](./04_mcp_tool_calling.md#46-the-small-model-limitation-story): an E2B model is *not* a self-working agent that can plan and finish a whole task alone. It took rounds of redesign (a→b→c→d) before the architecture settled: **the SLM gets only the small text jobs; everything else is forced by code** — the *harness*. That discovery is half the value of this project.
 
 ---
 
@@ -44,7 +44,7 @@ Read in order. Each chapter is complete on its own: read the code, run it, check
 | # | Chapter | What you build / learn | You will... |
 |---|---|---|---|
 | 0 | [Environment setup](./00_environment_setup.md) | Python, uv, Node.js, `@playwright/mcp`, the model file | Verify every piece is working |
-| 1 | [Your first local SLM](./01_basic_chat.md) | `src/basic_chat.py` — running the model locally, JSON-forced answers, memory | Talk to a ~2B model on your machine |
+| 1 | [Your first local SLM](./01_basic_chat.md) | `src/basic_chat.py` — running the model locally, JSON-forced answers, memory | Talk to Gemma 4 E2B on your machine |
 | 2 | [Tool calling](./02_basic_tool_calling.md) | `src/basic_tool_calling.py` — `@tool`, the tool-calling loop, two-stage pattern | Make the model call Python functions |
 | 3 | [MCP client](./03_mcp_client.md) | `src/mcp_client.py` — connecting servers, listing tools, the WAF discovery | Talk to real MCP servers |
 | 4 | [The full pipeline](./04_mcp_tool_calling.md) | `src/mcp_tool_calling.py` — the code-first harness, price extraction, the md report | Reproduce the final output |
@@ -67,7 +67,7 @@ Each chapter ends with **Experiments** — small on-purpose changes that break t
 
 | Term | Meaning |
 |---|---|
-| **SLM / LLM** | A language model. This project's model (Gemma 4 E2B) is "small": ~2B parameters ("parameters" = numbers inside the model, more = smarter but heavier), compressed so it runs even without a GPU |
+| **SLM / LLM** | A language model. This project's model (Gemma 4 E2B) is "small": 2.3B *effective* parameters ("parameters" = numbers inside the model, more = smarter but heavier; the "E" in E2B means "effective": the file holds ~5B numbers, but only 2.3B do the heavy computing work — the rest are quick-lookup tables). Compressed so it runs even without a GPU |
 | **GGUF** | Single-file model format for running models locally. Our file is `UD-Q2_K_XL` — a compressed ~2-bit version, small enough to run on an ordinary CPU |
 | **Token** | The unit models read/write (≈ ¾ of a word); all limits are in tokens |
 | **Context (`n_ctx`)** | How many tokens the model can hold at once; bigger = heavier |

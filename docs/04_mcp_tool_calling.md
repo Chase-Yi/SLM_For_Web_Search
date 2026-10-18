@@ -30,7 +30,7 @@ The first idea anyone would try: give the SLM the MCP tools and let it drive. We
 | Write a search query per product | **SLM** | Natural-language task, it's good at this |
 | Search, filter official URLs, browse pages, extract prices | **Code (harness)** | Must be exact, easy to test and debug |
 | Retry with a new query when a lookup fails | **Code drives, SLM writes the new query** | Best of both |
-| Compute the total price | **Code**, invoked by the SLM as an *addition tool* | 2B models cannot do arithmetic (verified) |
+| Compute the total price | **Code**, invoked by the SLM as an *addition tool* | An E2B model cannot do arithmetic (verified) |
 | Write the final sentence | **SLM** | Natural-language task |
 | Record every step → Markdown report | **Code (harness)** | Repeatable |
 
@@ -330,7 +330,7 @@ The model was asked to add the two prices by itself. Results, verified with many
 - `2150 + 449` → answered **`2150`**, the first number, *every single time* (plain question, "plus" wording, "number only", step-by-step…).
 - When the prompt contained a price list with brand words, the model repeated the first price instead of adding anything.
 
-**Rule learned:** a 2B model cannot reliably do arithmetic. **Fix:** an *addition tool* — the SLM *calls* it, Python computes:
+**Rule learned:** an E2B model cannot reliably do arithmetic. **Fix:** an *addition tool* — the SLM *calls* it, Python computes:
 
 ```python
 # The SLM cannot be trusted with arithmetic; Python does the addition.
@@ -616,7 +616,7 @@ If prices differ on the day you run it — that's fine, the store may have chang
 
 ## 4.11 What you learned / where this goes
 
-- A working **free, local "search + read + answer" pipeline**: DuckDuckGo MCP (search) + Playwright MCP (browser) + regex extraction + a local 2B SLM for the tiny text jobs — zero API keys, zero cost.
+- A working **free, local "search + read + answer" pipeline**: DuckDuckGo MCP (search) + Playwright MCP (browser) + regex extraction + a local E2B SLM for the tiny text jobs — zero API keys, zero cost.
 - The **code-first harness** pattern: the SLM does 3 text jobs; code does everything else.
 - Real proof of small-model limits (arithmetic, attention, prompt effects) and the fixes (tools, examples, neutral prompts, hints chosen by code).
 - A complete record system: every step labeled with who did it, timed, and written into the Markdown report.

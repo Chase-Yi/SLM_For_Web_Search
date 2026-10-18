@@ -8,9 +8,9 @@ The end goal of this project: give a **small language model running entirely on 
 
 > *"How much does it cost to buy a Nintendo Switch 2 and a Pro Controller in Hong Kong?"*
 
-This is the familiar behavior of big cloud assistants: you ask a question, the assistant quietly calls a search API, reads the results, and answers with current, real-world information. This project explores whether that *entire experience* can be reproduced **locally** — a ~2B-parameter model (small enough to run even without a GPU) combined with free MCP web-search tools — at **zero cost**, with no API keys and no cloud services.
+This is the familiar behavior of big cloud assistants: you ask a question, the assistant quietly calls a search API, reads the results, and answers with current, real-world information. This project explores whether that *entire experience* can be reproduced **locally** — a Gemma 4 E2B model (2.3B *effective* parameters, small enough to run even without a GPU) combined with free MCP web-search tools — at **zero cost**, with no API keys and no cloud services.
 
-Along the way, the project became a hands-on study of small-model limits: what a 2B model reliably *can* do (write a short search query, list product names, phrase one sentence) and what it clearly *cannot* (arithmetic, multi-step planning, staying on task). Everything you see here — the "code-first harness" architecture — is the result of that exploration, and the [study guide](docs/study_guide.md) documents every step of the journey.
+Along the way, the project became a hands-on study of small-model limits: what this E2B model reliably *can* do (write a short search query, list product names, phrase one sentence) and what it clearly *cannot* (arithmetic, multi-step planning, staying on task). Everything you see here — the "code-first harness" architecture — is the result of that exploration, and the [study guide](docs/study_guide.md) documents every step of the journey.
 
 ## Demo — what the finished pipeline does
 
@@ -46,11 +46,11 @@ Answering questions about *current* web data normally means building and maintai
    - **`@playwright/mcp`** → a real browser (`browser_navigate`, `browser_evaluate`).
 2. **Know why both are needed.** The DuckDuckGo server's `fetch_content` tool is a *plain page downloader* — it downloads the page like a plain file and never runs the page's JavaScript. The official Nintendo Hong Kong store sits behind an **AWS WAF JavaScript challenge** (a security check that only works if JavaScript runs): plain downloaders receive a challenge page and **0 useful content** (verified during development). Only a real browser passes it. So: search with DuckDuckGo, read pages with Playwright — each server covers the other's weakness.
 3. **Drive the tool combination with a local SLM.** The pipeline reproduces the familiar "LLM searches the web and answers" experience at **zero cost**, fully offline except the web requests themselves.
-4. **Be honest about small-model limits.** Development showed that the 2B model cannot work like an independent agent — one that plans and completes the whole task alone: it fails at arithmetic, ignores list requests, and gets confused by system prompts. The final architecture is therefore a **code-first harness**: the SLM does only three small text jobs (list the products, write search queries, write the final sentence — using the *addition tool*, the tiny Python `add(a, b)` function, for the math), and **code forces everything else** — searching, URL filtering, browsing, price extraction, retries, adding up the prices, reporting. The full debugging story (rounds a→b→c→d) is in [Chapter 4.6 of the study guide](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story).
+4. **Be honest about small-model limits.** Development showed that the E2B model cannot work like an independent agent — one that plans and completes the whole task alone: it fails at arithmetic, ignores list requests, and gets confused by system prompts. The final architecture is therefore a **code-first harness**: the SLM does only three small text jobs (list the products, write search queries, write the final sentence — using the *addition tool*, the tiny Python `add(a, b)` function, for the math), and **code forces everything else** — searching, URL filtering, browsing, price extraction, retries, adding up the prices, reporting. The full debugging story (rounds a→b→c→d) is in [Chapter 4.6 of the study guide](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story).
 
 ## Why this model?
 
-`gemma-4-E2B-it` compressed ("quantized") to **UD-Q2_K_XL** (from [unsloth/gemma-4-E2B-it-qat-GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF)): a ~2B-parameter model ("parameters" are the numbers inside the model — more means smarter but heavier) made small enough to run on an **ordinary CPU laptop**. The point: *anyone* — with or without a GPU — can reproduce this project's results, or use the same small model as a starting point for exploring what local SLMs can do.
+`gemma-4-E2B-it` compressed ("quantized") to **UD-Q2_K_XL** (from [unsloth/gemma-4-E2B-it-qat-GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF)): a **2.3B *effective*-parameter** model — the "E" in E2B stands for "effective": the file holds about 5B numbers in total, but only the 2.3B effective ones do the heavy computing work; the rest are large lookup tables that cost almost nothing to use ("parameters" are the numbers inside the model — more means smarter but heavier) — made small enough to run on an **ordinary CPU laptop**. The point: *anyone* — with or without a GPU — can reproduce this project's results, or use the same small model as a starting point for exploring what local SLMs can do.
 
 ## What the final run produces
 
@@ -114,7 +114,7 @@ This repo is also a **tutorial series**. For Python beginners, read in order:
 
 ## Key findings (the honest version)
 
-- **A 2B SLM cannot do arithmetic reliably** (`2150 + 449` → it answered `2150` in every variant we tried). Fix: an *addition tool* — the Python function `add(a, b)` computes the exact total, the model just calls it. Never let a small model compute totals.
+- **An E2B SLM cannot do arithmetic reliably** (`2150 + 449` → it answered `2150` in every variant we tried). Fix: an *addition tool* — the Python function `add(a, b)` computes the exact total, the model just calls it. Never let a small model compute totals.
 - **Small models need format examples, not long descriptions.** "List every product, one per line" produced only *one* line; a single example with different products (PS5!) fixed it 3 out of 3 runs.
 - **A system prompt written for one job can ruin another job.** "You write short web search queries" broke the product-listing job; a neutral prompt fixed both.
 - **JSON-schema samplers and tool calling cannot be used together** — the JSON grammar blocks the special tokens that tool calls need. Use two stages: tool chat (default sampler) + summary chat (schema sampler).
@@ -123,7 +123,7 @@ This repo is also a **tutorial series**. For Python beginners, read in order:
 
 ## Discussion — what a bigger model could change
 
-Look back at the architecture diagram and notice how much of it is **forced by code**: the official-domain filter in the query, the URL selection (`official_product_urls()`), the price regex (a text pattern, `extract_price_line()`), the 3-attempt retry rule, the code-chosen final hint, and the code-computed total. None of that is what an "AI agent" is *supposed* to do — it is the harness making up for what a 2B model clearly cannot do ([Chapter 4.6](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story)).
+Look back at the architecture diagram and notice how much of it is **forced by code**: the official-domain filter in the query, the URL selection (`official_product_urls()`), the price regex (a text pattern, `extract_price_line()`), the 3-attempt retry rule, the code-chosen final hint, and the code-computed total. None of that is what an "AI agent" is *supposed* to do — it is the harness making up for what an E2B model clearly cannot do ([Chapter 4.6](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story)).
 
 That raises the natural question this project leaves open for you to explore:
 
