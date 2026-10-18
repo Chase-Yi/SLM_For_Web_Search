@@ -71,7 +71,7 @@ uv pip install -r requirements.txt
 npm install -g @playwright/mcp
 ```
 
-**3. Download the model file** — click the link below, then save the file as `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf`:
+**3. Download the model file** — click the link below, then save the downloaded file **into the `model/` folder**, keeping the name `gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` (the folder ships a `README.txt` with the same instructions):
 
 > **[➜ Download gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF/resolve/main/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf?download=true)**
 
@@ -96,7 +96,7 @@ uv run --python ".venv" python -X utf8 -u src/mcp_tool_calling.py
 | [`docs/study_guide.md`](docs/study_guide.md) | **Complete tutorial** (chapters 0–5, with screenshots & experiments) |
 | [`output/`](output/) | Generated run reports (Markdown, table-rich) |
 | [`screenshot/`](screenshot/) | Reference screenshots used by the tutorial |
-| [`model/`](model/) | Put the downloaded `.gguf` here |
+| [`model/`](model/) | Put the downloaded `.gguf` model file here — see [`model/README.txt`](model/README.txt) |
 | [`project_setup.md`](project_setup.md) | Short checklist of setup steps |
 
 ## Learning path

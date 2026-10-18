@@ -8,6 +8,8 @@ In this chapter you meet the "brain" of the whole project: a small language mode
 src/basic_chat.py
 ```
 
+> **Before you run this chapter:** the model file must be downloaded and placed at `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` (that is Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file)). Every script in this project loads the model from that exact path.
+
 ---
 
 ## 1.1 Concepts you need first
@@ -119,7 +121,7 @@ if __name__ == "__main__":
     model = Model(model_path)
 ```
 
-- `Path(__file__).resolve().parent.parent` = the project root, computed from the script's own location. Run the script from anywhere and it still finds the model. **This pattern appears in every file of the project.**
+- `Path(__file__).resolve().parent.parent` = the project root, computed from the script's own location. Run the script from anywhere and it still finds the model — which must live at `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` inside the project. **This pattern appears in every file of the project.**
 
 ```python
     output_schema = {

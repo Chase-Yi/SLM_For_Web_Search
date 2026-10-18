@@ -94,7 +94,7 @@ Each chapter ends with **Experiments** — small on-purpose changes that break t
 | [`src/mcp_tool_calling.py`](../src/mcp_tool_calling.py) | The full harness: search → browse → extract → answer → report | [Chapter 4](./04_mcp_tool_calling.md) |
 | [`output/run_*.md`](../output/) | Generated run reports (the final result you build toward) | [Chapter 4.9](./04_mcp_tool_calling.md#49-run-it--and-reproduce-the-output) |
 | [`screenshot/`](../screenshot/) | Reference screenshots used in this guide | all |
-| [`model/`](../model/) | Place the downloaded `.gguf` here | [Chapter 0](./00_environment_setup.md) |
+| [`model/`](../model/) | Place the downloaded `.gguf` model file here — see [`model/README.txt`](../model/README.txt) | [Chapter 0](./00_environment_setup.md) |
 | [`requirements.txt`](../requirements.txt) / [`project_setup.md`](../project_setup.md) | Python packages / short checklist of setup steps | [Chapter 0](./00_environment_setup.md) |
 
 ---

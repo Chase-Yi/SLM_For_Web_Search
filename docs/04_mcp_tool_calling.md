@@ -459,6 +459,8 @@ def slm_search_query(query_slm: SLM, item: str, previous: str = "") -> str:
 
 ### The main flow
 
+(`model_path` is a constant at the top of the file: `project_root / "model" / "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"` — the model file you downloaded and placed in the `model/` folder in Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file).)
+
 ```python
 if __name__ == "__main__":
     step("harness", "run started", "loading the model and starting the MCP servers")
@@ -595,6 +597,7 @@ A full run takes **about 15–20 seconds** on this machine (Vulkan GPU; on CPU o
 ### Reproduce checklist
 
 - [ ] The environment from [Chapter 0](./00_environment_setup.md) is fully checked
+- [ ] `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` exists (the model file lives in the project's `model/` folder)
 - [ ] `output/` folder exists (the script creates it if missing)
 - [ ] Run command uses `-X utf8` and `-u`
 - [ ] Watch the live log: you should see both servers start, two queries, two prices, one `add` call

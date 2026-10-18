@@ -1,4 +1,5 @@
 .venv/
-model/
+model/*
+!model/README.txt
 __pycache__/
 *.pyc

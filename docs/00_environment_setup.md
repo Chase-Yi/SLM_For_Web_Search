@@ -23,7 +23,7 @@ Nothing here is optional. Take your time; every step has a check command so you 
 | **uv** | A very fast Python package manager we use to create the venv and install packages | https://docs.astral.sh/uv/ |
 | **Node.js (LTS)** | The Playwright MCP server is a Node.js package | https://nodejs.org/ |
 | **Google Chrome** *(optional)* | Only needed if you want Playwright MCP to drive your own Chrome (`--browser chrome`). By default it uses its own bundled Chromium, downloaded automatically — no separate browser install required | https://www.google.com/chrome/ |
-| **The model file** | The "brain": Gemma 4 E2B, a small compressed GGUF file | [Download page (Hugging Face)](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF) |
+| **The model file** | The "brain": Gemma 4 E2B, a small compressed GGUF file — it goes **into the `model/` folder** (Step 3 below) | [Download page (Hugging Face)](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF) |
 
 You do **not** need a GPU. The model file chosen here is a small, heavily compressed one made specifically to run on an ordinary CPU. If you do have a GPU (e.g. NVIDIA), the engine that runs the model (nobodywho) will use it automatically through Vulkan and run faster.
 
@@ -167,7 +167,7 @@ Then place it exactly here:
 model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf
 ```
 
-(If the `model` folder does not exist, create it. The filename must match exactly — the code looks for this exact name.)
+(The repository ships the `model` folder already, with a `README.txt` that says the same thing. The filename must match exactly — the code looks for this exact name.)
 
 > **What is this file?** It is a **GGUF** model: a single file containing the whole neural network (the "brain"). `UD-Q2_K_XL` is a "dynamic 2-bit" quantization (compression method) from Unsloth — a compressed version that is small enough to run on an ordinary CPU laptop, and slightly less accurate than the full-size model. That is a fair trade: **anyone** with a normal computer can run this project.
 

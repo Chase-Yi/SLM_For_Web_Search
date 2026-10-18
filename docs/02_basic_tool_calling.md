@@ -10,6 +10,8 @@ In this chapter, the model gets two pretend "price" tools and answers three ques
 src/basic_tool_calling.py
 ```
 
+> **Before you run this chapter:** the script loads the model file from `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` — if you have not downloaded it yet, do Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file) first.
+
 ---
 
 ## 2.1 The `@tool` decorator
