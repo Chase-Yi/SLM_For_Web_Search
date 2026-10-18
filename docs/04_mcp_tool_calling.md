@@ -48,7 +48,7 @@ sequenceDiagram
 
     U->>H: one question
     H->>S: "list the products"
-    S-->>H: console; Pro Controller
+    S-->>H: console, Pro Controller
     loop each product
         H->>S: "write a search query"
         S-->>H: query text
