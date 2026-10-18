@@ -53,7 +53,7 @@ def get_switch2_controller_price(store: str, controller_type: str) -> str:
     return f"Nintendo Switch 2 controller ({controller_type}) price: HKD 538 (store: {store})"
 ```
 
-Reference: nobodywho tool calling docs — https://docs.nobodywho.ooo/python/tool-calling/
+Reference: nobodywho tool calling docs — https://docs.nobodywho.ai/python/tool-calling/
 
 ---
 
@@ -141,7 +141,7 @@ The demo runs each question through **two different chats**:
 
 > ⚠️ **The conflict we discovered (important!).** A JSON-schema sampler and tools **cannot be used at the same time**. The schema limits *every* token to the JSON grammar, and tool calls are written with special tokens that the grammar does not allow. Result: the model *wants* to call a tool (you can see it say so in `reasoning`) but makes **zero tool calls**. If you ever see a model "describing" a tool instead of calling it, this is why. Rule: **tools need the default sampler; JSON needs the schema sampler; never both at once.**
 
-Reference: nobodywho sampling docs (SamplerBuilder) — https://docs.nobodywho.ooo/python/
+Reference: nobodywho sampling docs (SamplerBuilder) — https://docs.nobodywho.ai/python/
 
 ---
 

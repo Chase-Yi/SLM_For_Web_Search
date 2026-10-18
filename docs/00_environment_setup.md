@@ -148,7 +148,7 @@ Let's look at what gets installed, because every package has a job:
 | Package | Job |
 |---|---|
 | `mcp` | The official **MCP client** library (Python). Lets our code connect to MCP servers with `Client` / `ClientSession`. Docs: https://modelcontextprotocol.io/ |
-| `nobodywho` | The **engine that runs the model**: it loads the GGUF file and generates text. Docs: https://docs.nobodywho.ooo/python/ · GitHub: https://github.com/nobodywho-ooo/nobodywho · PyPI: https://pypi.org/project/nobodywho/ |
+| `nobodywho` | The **engine that runs the model**: it loads the GGUF file and generates text. Docs: https://docs.nobodywho.ai/python/ · GitHub: https://github.com/nobodywho-ooo/nobodywho · PyPI: https://pypi.org/project/nobodywho/ |
 | `duckduckgo-mcp-server[browser]` | The **DuckDuckGo search MCP server** (a Python package). GitHub: https://github.com/nickclyde/duckduckgo-mcp-server · PyPI: https://pypi.org/project/duckduckgo-mcp-server/ |
 
 (Remember: the fourth "dependency", `@playwright/mcp`, is the Node package you installed with npm — it cannot be listed in `requirements.txt`.)

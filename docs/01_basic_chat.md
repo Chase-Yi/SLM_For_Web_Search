@@ -22,7 +22,7 @@ src/basic_chat.py
 | **Sampler** | The rules for picking each next token: how random (`temperature`), and what shape the output may have (JSON schema) |
 | **System prompt** | The standing instruction that tells the model how to behave |
 
-Reference: nobodywho Python docs — https://docs.nobodywho.ooo/python/ (chapters: Getting started, Chat, Sampling, Tool calling).
+Reference: nobodywho Python docs — https://docs.nobodywho.ai/python/ (chapters: Getting started, Chat, Sampling, Tool calling).
 
 ---
 

@@ -148,7 +148,7 @@ This project started on purpose from the **smallest** useful model, to find the 
 
 ## References
 
-[MCP](https://modelcontextprotocol.io/) · [MCP client tutorial](https://modelcontextprotocol.io/docs/develop/build-client) · [nobodywho docs](https://docs.nobodywho.ooo/python/) · [nobodywho tool calling](https://docs.nobodywho.ooo/python/tool-calling/) · [nobodywho GitHub](https://github.com/nobodywho-ooo/nobodywho) · [duckduckgo-mcp-server](https://github.com/nickclyde/duckduckgo-mcp-server) · [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
+[MCP](https://modelcontextprotocol.io/) · [MCP client tutorial](https://modelcontextprotocol.io/docs/develop/build-client) · [nobodywho docs](https://docs.nobodywho.ai/python/) · [nobodywho tool calling](https://docs.nobodywho.ai/python/tool-calling/) · [nobodywho GitHub](https://github.com/nobodywho-ooo/nobodywho) · [duckduckgo-mcp-server](https://github.com/nickclyde/duckduckgo-mcp-server) · [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
 
 ---
 

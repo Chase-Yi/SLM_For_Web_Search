@@ -102,7 +102,7 @@ Each chapter ends with **Experiments** — small on-purpose changes that break t
 ## Official references used by this guide
 
 - MCP: [modelcontextprotocol.io](https://modelcontextprotocol.io/) · [Build an MCP client (official tutorial)](https://modelcontextprotocol.io/docs/develop/build-client) · [Python SDK](https://github.com/modelcontextprotocol/python-sdk)
-- nobodywho (the engine that runs the model locally): [docs](https://docs.nobodywho.ooo/python/) · [tool calling docs](https://docs.nobodywho.ooo/python/tool-calling/) · [GitHub](https://github.com/nobodywho-ooo/nobodywho) · [PyPI](https://pypi.org/project/nobodywho/)
+- nobodywho (the engine that runs the model locally): [docs](https://docs.nobodywho.ai/python/) · [tool calling docs](https://docs.nobodywho.ai/python/tool-calling/) · [GitHub](https://github.com/nobodywho-ooo/nobodywho) · [PyPI](https://pypi.org/project/nobodywho/)
 - DuckDuckGo MCP server: [GitHub](https://github.com/nickclyde/duckduckgo-mcp-server) · [PyPI](https://pypi.org/project/duckduckgo-mcp-server/)
 - Playwright MCP: [GitHub](https://github.com/microsoft/playwright-mcp) · [npm](https://www.npmjs.com/package/@playwright/mcp) · [Playwright docs](https://playwright.dev/docs/getting-started-mcp)
 - The model: [unsloth/gemma-4-E2B-it-qat-GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF)
