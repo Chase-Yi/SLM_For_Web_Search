@@ -13,7 +13,7 @@ from nobodywho import Chat, Model, SamplerBuilder, SamplerConfig, TokenStream, t
 from mcp import Client, StdioServerParameters
 
 project_root = Path(__file__).resolve().parent.parent
-model_path = project_root / "model" / "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"
+model_path = project_root / "model" / "Qwen3.5-0.8B-BF16.gguf"
 
 OFFICIAL_DOMAIN = "store.nintendo.com.hk"
 
@@ -168,14 +168,20 @@ def fetch_webpage(url: str) -> str:
     navigation = mcp_call("playwright-mcp", "browser_navigate", {"url": url}, timeout=90)
     if navigation.startswith("ERROR:"):
         return navigation
+    last_error = ""
     for _ in range(10):  # the WAF challenge needs a few seconds to pass
         time.sleep(2)
         raw = mcp_call("playwright-mcp", "browser_evaluate", {"function": _EXTRACT_TEXT_JS}, timeout=60)
         if raw.startswith("ERROR:"):
-            return raw
+            # The WAF redirect can destroy the page context while it is still
+            # navigating; that is transient, so keep polling the same page.
+            last_error = raw
+            continue
         text = _playwright_result(raw)
         if len(text) > 200:
             return text
+    if last_error:
+        return last_error
     return f"ERROR: {url} did not show readable text within 20 seconds."
 
 
@@ -241,6 +247,15 @@ def extract_price_line(text: str) -> str:
     return " ".join(match.group(0).split()) if match else ""
 
 
+def price_number(price_text: str) -> str:
+    """The digits of a captured price, ready for the SLM's add tool.
+
+    A weak model fumbles 'HKD 3,700' -> 3700, so the harness does it:
+    'HKD 3,700' becomes '3700'.
+    """
+    return re.sub(r"[^\d]", "", price_text)
+
+
 def official_product_urls(search_results: str) -> list[str]:
     """The official store product URLs in a search result, in order, deduped."""
     urls = [
@@ -281,10 +296,19 @@ def slm_search_query(query_slm: SLM, item: str, previous: str = "") -> str:
     """The SLM's search job: one short query that finds the item's price page."""
     prompt = (
         "Write one short English web search query that finds the official "
-        f"Hong Kong price page for this product. Reply with the query only.\n\nProduct: {item}"
+        "Hong Kong price page for this product. "
+        "The query must be plain search words, NOT a URL. "
+        "Reply with the plain words only.\n\n"
+        "Product: PlayStation 5 console\nQuery: PlayStation 5 console price Hong Kong\n\n"
+        "Now write the query for this product:\n"
+        f"Product: {item}"
     )
     if previous:
-        prompt += f"\nThe previous query {previous!r} found no usable price; write a different one."
+        prompt += (
+            f"\nYour previous query {previous!r} found no usable price. "
+            f"Write a different query for the same product. "
+            f"The product name is {item}."
+        )
     answer = query_slm.invoke(prompt)
     first = next((line for line in answer.splitlines() if line.strip()), item)
     query = clean_query(first)
@@ -441,8 +465,9 @@ if __name__ == "__main__":
         model=model,
         system_prompt=(
             "Answer the user's question using only the official price data you are given. "
-            "When the question asks for a total, call the add tool with the prices; never "
-            "do the math yourself. Be brief and exact; if a price is missing, say so honestly."
+            "When the question asks for a total, you MUST call the add tool with the "
+            "price numbers; NEVER do the math yourself. If a price is missing, say so "
+            "honestly and do not invent one."
         ),
         n_ctx=8192,
         max_completion_tokens=1000,
@@ -466,14 +491,12 @@ if __name__ == "__main__":
          tool="Python function: `json.dumps()`")
 
     evidence = "\n".join(
-        f"- {item}: {data['useful_content']} (source: {data['url']})"
+        f"- {item}: {data['useful_content']} "
+        f"(number: {price_number(data['useful_content'])}, source: {data['url']})"
         for item, data in price_data.items()
     ) or "Nothing was captured; the web search failed."
     if len(price_data) >= 2:
-        final_hint = (
-            "Call the add tool with the prices to get the total, "
-            "then answer in one sentence: 'The total cost is HKD [total]'."
-        )
+        final_hint = "Call the add tool now with a and b from the price data above."
     else:
         final_hint = (
             "Do not call the add tool. State the price that was found and say "

@@ -82,7 +82,7 @@ class SLM:
 if __name__ == "__main__":
     project_root = Path(__file__).resolve().parent.parent
 
-    model_path = project_root / "model" / "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"
+    model_path = project_root / "model" / "Qwen3.5-0.8B-BF16.gguf"
 
     model = Model(model_path)
 
@@ -101,7 +101,13 @@ if __name__ == "__main__":
     Write your reasoning in the "reasoning" field, 
     and your final reply in the "answer" field.
     When the Previous Conversation is provided,
-    must use it when answering user's question.
+    it is the only source of facts about the user.
+    Remember the details the user shares (such as their name),
+    and reuse them in later replies.
+    If the user asks about themselves 
+    (for example "Who am I?" or "What is my name?"),
+    answer with the name from the Previous Conversation,
+    and nothing else.
     """
 
     slm = SLM(

@@ -23,6 +23,6 @@ npm install -g @playwright/mcp
 
 # 4 - Download Small Language Model File
 ## 4.1 - Download link (click to download):
-[➜ gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF/resolve/main/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf?download=true)
+[➜ Qwen3.5-0.8B-BF16.gguf](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-BF16.gguf?download=true)
 
-## 4.2 - Put this SLM File under the path of "model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"
+## 4.2 - Put this SLM File under the path of "model/Qwen3.5-0.8B-BF16.gguf"

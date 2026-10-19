@@ -23,9 +23,9 @@ Nothing here is optional. Take your time; every step has a check command so you 
 | **uv** | A very fast Python package manager we use to create the venv and install packages | https://docs.astral.sh/uv/ |
 | **Node.js (LTS)** | The Playwright MCP server is a Node.js package | https://nodejs.org/ |
 | **Google Chrome** *(optional)* | Only needed if you want Playwright MCP to drive your own Chrome (`--browser chrome`). By default it uses its own bundled Chromium, downloaded automatically — no separate browser install required | https://www.google.com/chrome/ |
-| **The model file** | The "brain": Gemma 4 E2B, a small compressed GGUF file — it goes **into the `model/` folder** (Step 3 below) | [Download page (Hugging Face)](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF) |
+| **The model file** | The "brain": Qwen3.5-0.8B, a small GGUF file (~1.5 GB) — it goes **into the `model/` folder** (Step 3 below) | [Download page (Hugging Face)](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF) |
 
-You do **not** need a GPU. The model file chosen here is a small, heavily compressed one made specifically to run on an ordinary CPU. If you do have a GPU (e.g. NVIDIA), the engine that runs the model (nobodywho) will use it automatically through Vulkan and run faster.
+You do **not** need a GPU. The model file chosen here is a small one (0.8B parameters, ~1.5 GB) made to run on an ordinary CPU. If you do have a GPU (e.g. NVIDIA), the engine that runs the model (nobodywho) will use it automatically through Vulkan and run faster.
 
 ---
 
@@ -157,19 +157,19 @@ Let's look at what gets installed, because every package has a job:
 
 Download the model from Hugging Face — click this link to start the download:
 
-> **[➜ Download gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF/resolve/main/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf?download=true)**
+> **[➜ Download Qwen3.5-0.8B-BF16.gguf](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-BF16.gguf?download=true)**
 
-(Prefer browsing the page first? Here is the repository it comes from: [unsloth/gemma-4-E2B-it-qat-GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF).)
+(Prefer browsing the page first? Here is the repository it comes from: [unsloth/Qwen3.5-0.8B-GGUF](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF). The official base model page is [Qwen/Qwen3.5-0.8B](https://huggingface.co/Qwen/Qwen3.5-0.8B).)
 
 Then place it exactly here:
 
 ```
-model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf
+model/Qwen3.5-0.8B-BF16.gguf
 ```
 
 (The repository ships the `model` folder already, with a `README.txt` that says the same thing. The filename must match exactly — the code looks for this exact name.)
 
-> **What is this file?** It is a **GGUF** model: a single file containing the whole neural network (the "brain"). `UD-Q2_K_XL` is a "dynamic 2-bit" quantization (compression method) from Unsloth — a compressed version that is small enough to run on an ordinary CPU laptop, and slightly less accurate than the full-size model. That is a fair trade: **anyone** with a normal computer can run this project.
+> **What is this file?** It is a **GGUF** model: a single file containing the whole neural network (the "brain"). `BF16` means the model's numbers are stored in full precision (16 bits each) — no compression. It is a 0.8B-parameter model: small enough that the whole file is only ~1.5 GB and runs on an ordinary CPU laptop. That is the point: **anyone** with a normal computer can run this project.
 
 ---
 
@@ -181,7 +181,7 @@ One command proves that Python, the packages, both MCP servers and Node are all 
 uv run --python ".venv" python -X utf8 src/mcp_client.py
 ```
 
-Expected output:
+Expected output (from a real run on this machine):
 
 ![mcp client output](../screenshot/mcp_client.png)
 
@@ -205,7 +205,7 @@ Checklist:
 - [ ] `node --version` and `npm --version` work
 - [ ] `playwright-mcp --version` works
 - [ ] `.venv` exists and `uv pip install -r requirements.txt` succeeded
-- [ ] `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` exists
+- [ ] `model/Qwen3.5-0.8B-BF16.gguf` exists
 - [ ] `src/mcp_client.py` prints both tool lists
 
 When all of those are ticked, continue to **[Chapter 1 — Your first local SLM](./01_basic_chat.md)**.

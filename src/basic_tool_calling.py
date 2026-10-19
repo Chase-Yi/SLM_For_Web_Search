@@ -4,7 +4,7 @@ from pathlib import Path
 from nobodywho import Chat, Model, SamplerBuilder, SamplerConfig, TokenStream, tool
 
 project_root = Path(__file__).resolve().parent.parent
-model_path = project_root / "model" / "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"
+model_path = project_root / "model" / "Qwen3.5-0.8B-BF16.gguf"
 
 
 @tool(

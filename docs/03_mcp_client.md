@@ -106,7 +106,7 @@ Both servers are started **one after the other**, each in its own clean `async w
 uv run --python ".venv" python -X utf8 src/mcp_client.py
 ```
 
-Expected output:
+Expected output (from a real run on this machine):
 
 ![mcp client output](../screenshot/mcp_client.png)
 

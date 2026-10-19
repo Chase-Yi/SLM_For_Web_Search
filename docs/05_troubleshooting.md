@@ -28,7 +28,7 @@ uv run --python ".venv" python -X utf8 -u src/mcp_tool_calling.py
 
 **Cause:** each `Chat` context with a large `n_ctx` (e.g. 100000) uses hundreds of MB of graphics card memory. An old version of the project created a **fresh Chat in every loop iteration** — the first iteration worked, the second one ran out of memory.
 
-**Fix:** create each chat **once** and reuse it. Between turns, call `chat.reset_history()` instead of building a new chat. This project also uses small contexts (`n_ctx=8192`) for its helper chats. If you have no GPU at all, the model runs on the CPU (slower, no graphics memory involved) — that is exactly why the small compressed model was chosen.
+**Fix:** create each chat **once** and reuse it. Between turns, call `chat.reset_history()` instead of building a new chat. This project also uses small contexts (`n_ctx=8192`) for its helper chats. If you have no GPU at all, the model runs on the CPU (slower, no graphics memory involved) — that is exactly why such a small model was chosen.
 
 ---
 
@@ -92,13 +92,15 @@ Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "playwright
 
 ---
 
-## 5.6 Harmless noise: `MCPDeprecationWarning` and "exit code 1"
+## 5.6 Harmless noise: `MCPDeprecationWarning`, KV-cache fallback, and "exit code 1"
 
 **Symptom:** walls of `MCPDeprecationWarning: The logging capability is deprecated...` in the log, and PowerShell reporting `Exit Code: 1` even though your script printed everything correctly.
 
 **Cause:** (a) the MCP library writes deprecation warnings to stderr (the "error output" channel); (b) when PowerShell redirects stderr (`2>&1`), any stderr text is treated as an error and changes the exit code — even harmless warnings.
 
 **Fix:** nothing to fix. Whenever you redirect stderr, judge success by the script's own output (`[done] report saved to ...`), not by the exit code. To see a clean exit code, send stderr to its own file or discard it.
+
+**Also harmless (Qwen3.5):** you may see `Partial KV cache removal not supported and no usable checkpoint, falling back to full context reset` on stderr when the chat history is reset or the context shifts. The model's hybrid design (mostly linear-attention layers) cannot drop just *part* of its cache, so the engine clears the whole context instead — a small performance cost, nothing more. No action needed.
 
 ---
 
@@ -125,9 +127,9 @@ Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "playwright
 
 **Checklist:**
 
-- File is exactly at `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` (name and folder must match; all scripts find paths relative to their own file, so you can run them from anywhere).
+- File is exactly at `model/Qwen3.5-0.8B-BF16.gguf` (name and folder must match; all scripts find paths relative to their own file, so you can run them from anywhere).
 - The download finished completely (an interrupted download gives you a broken file; re-download if you are not sure).
-- Enough RAM: the compressed file is small, but loading it plus a `n_ctx=100000` context is heavier than the file alone. If you are low on memory, use a smaller `n_ctx` like the pipeline does (`8192`).
+- Enough RAM: the model file itself is small (~1.5 GB), but loading it plus a `n_ctx=100000` context is heavier than the file alone. If you are low on memory, use a smaller `n_ctx` like the pipeline does (`8192`).
 
 ---
 

@@ -6,16 +6,16 @@ This project runs a local small language model, and that model is a
 single GGUF file. Download it and save it in THIS folder, with exactly
 this name:
 
-    model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf
+    model/Qwen3.5-0.8B-BF16.gguf
 
-Download link (Hugging Face, about 2 GB):
+Download link (Hugging Face, about 1.5 GB):
 
-    https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF/resolve/main/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf?download=true
+    https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-BF16.gguf?download=true
 
 Important notes:
 
 - The file name and folder must match exactly. Every script in this
-  project loads the model from "model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"
+  project loads the model from "model/Qwen3.5-0.8B-BF16.gguf"
   (relative to the project root), so a renamed or misplaced file will
   crash with a "file not found" error.
 

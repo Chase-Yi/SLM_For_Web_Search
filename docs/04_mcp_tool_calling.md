@@ -8,7 +8,7 @@ This is the finale. One user question goes in:
 
 …and this comes out:
 
-> **The total cost is HKD 4238.**
+> **The total cost will be HKD 4,238.**
 
 …along with a complete Markdown report full of tables, covering everything that happened, saved to `output/run_<timestamp>.md`.
 
@@ -30,7 +30,7 @@ The first idea anyone would try: give the SLM the MCP tools and let it drive. We
 | Write a search query per product | **SLM** | Natural-language task, it's good at this |
 | Search, filter official URLs, browse pages, extract prices | **Code (harness)** | Must be exact, easy to test and debug |
 | Retry with a new query when a lookup fails | **Code drives, SLM writes the new query** | Best of both |
-| Compute the total price | **Code**, invoked by the SLM as an *addition tool* | An E2B model cannot do arithmetic (verified) |
+| Compute the total price | **Code**, invoked by the SLM as an *addition tool* | A small model cannot be trusted with arithmetic (verified: 2 of 6 test sums wrong) |
 | Write the final sentence | **SLM** | Natural-language task |
 | Record every step → Markdown report | **Code (harness)** | Repeatable |
 
@@ -66,7 +66,7 @@ sequenceDiagram
     H->>H: assemble {"url", "useful_content"} JSON
     H->>S: question + price data + final hint
     S->>H: addition tool call (uses Python add())
-    S-->>H: "The total cost is HKD 4238."
+    S-->>H: "The total cost will be HKD 4,238."
     H->>H: write output/run_<timestamp>.md
 ```
 
@@ -293,14 +293,23 @@ def extract_price_line(text: str) -> str:
     """
     match = PRICE_RE.search(text)
     return " ".join(match.group(0).split()) if match else ""
+
+
+def price_number(price_text: str) -> str:
+    """The digits of a captured price, ready for the SLM's add tool.
+
+    A weak model fumbles 'HKD 3,700' -> 3700, so the harness does it:
+    'HKD 3,700' becomes '3700'.
+    """
+    return re.sub(r"[^\d]", "", price_text)
 ```
 
 Why this shape? We find the price with a **regex** — a text pattern (explained in the study guide glossary) that here means "the text `HKD` followed by digits". Verified by testing directly on the store page:
 
 - The page marks its price with the plain text **`HKD`** (ASCII — English letters and digits; we counted: `HKD 3,700` and `HKD3,700`, and zero times for `HK$`, `$`-with-digits, or Chinese price words like 港幣/價格/售價).
 - **The first match is used** — the product's own price appears before the prices of accessories in the visible text.
-- Only the tiny text (`"HKD 3,700"`) is kept. The page text never reaches the SLM.
-  - An earlier version passed a 70-character *piece* around the price to the SLM. The piece contained Chinese characters; the model then made up duplicated lines. **Lesson: give the SLM clean ASCII text, not pieces of the page.**
+- Only the tiny text (`"HKD 3,700"`) is kept. The page text never reaches the SLM — the model only ever sees clean, exact price text.
+- Each captured price is then converted to a bare number **in code** (`price_number()`: `"HKD 3,700"` → `"3700"`) before it goes into the add-tool call — the model never has to reformat it.
 - The URL filter keeps only official product pages, in order, with duplicates removed:
 
 ```python
@@ -322,15 +331,14 @@ def official_product_urls(search_results: str) -> list[str]:
 
 This section documents the real debugging journey. Each stage looked like a good idea; each failed; each fix taught a rule about small models.
 
-### (a) Let the model do the arithmetic → failed
+### (a) Trust the model's arithmetic → it gets sums wrong
 
-The model was asked to add the two prices by itself. Results, verified with many prompt variants:
+The model was asked to add prices by itself. Results, verified with a test of 6 sums:
 
-- `3700 + 538` → correct (`4238`) — sometimes.
-- `2150 + 449` → answered **`2150`**, the first number, *every single time* (plain question, "plus" wording, "number only", step-by-step…).
-- When the prompt contained a price list with brand words, the model repeated the first price instead of adding anything.
+- `2150 + 449` → `2599` (correct) and `3700 + 538` → `4238` (correct) — **simple sums often succeed.**
+- But `4786 + 3769` → came out `8545` (correct: `8555`), and `1245 + 8799` → came out `9944` (correct: `10044`) — **2 of the 6 sums were wrong**, each time with a confident, step-by-step-looking reasoning field.
 
-**Rule learned:** an E2B model cannot reliably do arithmetic. **Fix:** an *addition tool* — the SLM *calls* it, Python computes:
+**Rule learned:** a 0.8B model cannot be trusted with arithmetic — even when an answer looks right, you cannot build a pipeline that depends on luck. **Fix:** an *addition tool* — the SLM *calls* it, Python computes:
 
 ```python
 # The SLM cannot be trusted with arithmetic; Python does the addition.
@@ -347,47 +355,69 @@ def add(a: float, b: float) -> str:
     return f"{a + b:g}"
 ```
 
-Verified from start to finish: the SLM called `add({'a': 3700, 'b': 538})` → `4238` → "The total cost is HKD 4238."
+Verified from start to finish: the SLM called the add tool with `3700` and `538` → the tool returned `4238` → the final answer was "The total cost will be HKD 4,238." The report's timeline shows the call and its result, so every total is auditable.
 
-### (b) Asking the model to "list the products" → it listed ONE
+### (b) Wrap the command in details → the model skips it
 
-Prompt: *"list every product the user wants to buy, one product per line."* The model returned only **`Nintendo Switch 2 Pro Controller`** — it only paid attention to the product mentioned *last*, and missed the console completely (so the pipeline then searched for only one item!).
-
-**Fix:** an **example** built right into the prompt (this technique is called "few-shot"):
+Tested: hints that wrap the call request in extra instructions ("You MUST call the add tool with the exact price numbers … After the tool returns the total, answer in one sentence: 'The total cost is HKD [total]'.") → the model **ignored the tool** and did its own arithmetic, in 4 of 4 trials. The working design uses a short, direct command — the wording verified to work in every trial:
 
 ```python
-    answer = query_slm.invoke(
-        "Example question: What is the total cost of a PS5 console and a DualSense controller?\n"
-        "Example output:\nPS5 console\nDualSense controller\n\n"
-        "Now do the same for this question. Output one product per line:\n"
-        f"{question}"
+        final_hint = "Call the add tool now with a and b from the price data above."
+```
+
+And the numbers are prepared by the harness first: each evidence line carries the converted number (`- Nintendo Switch 2 console: HKD 3,700 (number: 3700, source: …)`), produced in code by `price_number()` — so the model never has to convert `HKD 3,700` into `3700` itself.
+
+**Rule learned:** weak models obey **short, direct commands**; long conditional instructions get skipped. And: do every format conversion in code — never in the prompt.
+
+### (c) Ask for a search query with no example → got a URL
+
+Tested: the plain instruction ("Write one short English web search query … Reply with the query only.") → the model returned `https://www.nintendo.com/hk/switch-2` — a URL, not search words (the search limped to a usable result by luck). The working design shows the wanted shape with a short example and states the rule in plain words:
+
+```python
+    prompt = (
+        "Write one short English web search query that finds the official "
+        "Hong Kong price page for this product. "
+        "The query must be plain search words, NOT a URL. "
+        "Reply with the plain words only.\n\n"
+        "Product: PlayStation 5 console\n"
+        "Query: PlayStation 5 console price Hong Kong\n\n"
+        "Now write the query for this product:\n"
+        f"Product: {item}"
     )
 ```
 
-An example with *different* products (PS5!) showing exactly two output lines fixed it: 3 out of 3 runs produced both products, and the example products never appeared in the answer. **Rule learned:** for format tasks, one good example works better than any number of written instructions.
+Verified: every run since writes plain words ('Nintendo Switch 2 console price Hong Kong'), and the example products never leak into the answer. The product-listing job uses the same trick (one short PS5 example) to pin its exact two-line output format. **Rule learned:** for these small jobs, a short example of the wanted shape does more than any description — and an explicit rule ("NOT a URL") together with the example works even better.
 
-### (c) The system prompt was pushing the model the wrong way
+### (d) One system prompt, two jobs → the second job broke
 
-The item-list job failed even with the example — because the SLM's system prompt said *"You write short web search queries. Reply with the query text only."* That instruction spilled over into the *listing* task and pushed it to output a single line.
-
-**Fix:** a neutral system prompt that works for both jobs:
+Tested: a system prompt written for the query job only ("You write short web search queries. Reply with the query text only.") → the listing job collapsed to a single line: **`Nintendo Switch 2 Console + Nintendo Switch 2 Pro Controller`** — not the requested one-product-per-line format. The working design uses one neutral system prompt for both jobs:
 
 ```python
         system_prompt="Follow the instruction exactly and reply with the requested lines only.",
 ```
 
-Verified: with this prompt, both the listing job and the query-writing job produce correct, clean output. **Rule learned:** one SLM instance with two jobs needs a system prompt that is neutral between them.
+Verified: both the listing job and the query-writing job produce correct, clean output. **Rule learned:** one SLM instance with two jobs needs a system prompt that is neutral between them.
 
-### (d) One missing price should not produce a wrong total
+### (e) Retries and missing data → restate the facts; let code choose the hint
 
-If only one lookup succeeds, asking the model to "add the prices" becomes a problem (we watched it add the same price twice). **Fix:** the final hint is chosen **by code**, based on how many prices were really found:
+When a lookup failed, the retry instruction ("The previous query … found no usable price; write a different one.") once produced the *other* product's query — the model lost track of which product was being retried. **Fix:** restate the product in the retry prompt:
+
+```python
+    if previous:
+        prompt += (
+            f"\nYour previous query {previous!r} found no usable price. "
+            f"Write a different query for the same product. "
+            f"The product name is {item}."
+        )
+```
+
+Verified in a run where one item never resolved (a product not sold in the store): all 3 retries stayed on the right product.
+
+And when only one price is found, "add the prices" would be wrong — so the final hint is chosen **by code**, based on how many prices were really found:
 
 ```python
     if len(price_data) >= 2:
-        final_hint = (
-            "Call the add tool with the prices to get the total, "
-            "then answer in one sentence: 'The total cost is HKD [total]'."
-        )
+        final_hint = "Call the add tool now with a and b from the price data above."
     else:
         final_hint = (
             "Do not call the add tool. State the price that was found and say "
@@ -395,11 +425,11 @@ If only one lookup succeeds, asking the model to "add the prices" becomes a prob
         )
 ```
 
-Verified in a run where only one price was found: the answer became *"The price for the Nintendo Switch 2 Pro Controller is HKD 538. The price for the Nintendo Switch 2 console is missing."* — honest, no made-up math. **Rule learned:** let code decide which instruction the model should receive, based on hard facts the code knows.
+Verified in that same run: the final answer became *"The Nintendo Switch 2 console costs HKD 3,700. The Steam Deck price is missing from the provided data."* — honest, no made-up math, no add call. **Rule learned:** restate the subject in every retry, and let code decide which instruction the model receives, based on hard facts the code knows.
 
 ### The takeaway
 
-> A small model only transforms text — it is not a self-working agent that plans and finishes the whole task alone. It can write a query, list two product names, and phrase one sentence. Everything else — searching, filtering, browsing, extracting, retrying, adding, reporting — must be **forced by code**. That is why this project is a *harness* around an SLM, not a fully independent agent.
+> A small model only transforms text — it is not a self-working agent that plans and finishes the whole task alone. It can list product names, write a query, call a tool when told directly, and phrase one sentence. Everything else — searching, filtering, browsing, extracting, retrying, adding, reporting — must be **forced by code**. That is why this project is a *harness* around an SLM, not a fully independent agent.
 
 ---
 
@@ -459,7 +489,7 @@ def slm_search_query(query_slm: SLM, item: str, previous: str = "") -> str:
 
 ### The main flow
 
-(`model_path` is a constant at the top of the file: `project_root / "model" / "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"` — the model file you downloaded and placed in the `model/` folder in Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file).)
+(`model_path` is a constant at the top of the file: `project_root / "model" / "Qwen3.5-0.8B-BF16.gguf"` — the model file you downloaded and placed in the `model/` folder in Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file).)
 
 ```python
 if __name__ == "__main__":
@@ -569,39 +599,22 @@ Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "playwright
 uv run --python ".venv" python -X utf8 -u src/mcp_tool_calling.py
 ```
 
-Live output (printed as it happens):
+Live output (printed as it happens) — a screenshot of a real run on this machine:
 
-```
-[harness] run started: loading the model and starting the MCP servers
-[harness] duckduckgo-mcp-server started: search, fetch_content, expand_link
-[harness] playwright-mcp started: browser_close, browser_resize, ...
-[harness] user question: If I buy the Nintendo Switch 2 console and ...
-[slm] listed the products to buy: Nintendo Switch 2 console; Nintendo Switch 2 Pro Controller
-[slm] wrote a search query: Nintendo Switch 2 console -> 'Nintendo Switch 2 console price Hong Kong'
-[harness] search attempt 1: 'Nintendo Switch 2 console price Hong Kong' + store.nintendo.com.hk
-[harness] reading page: https://store.nintendo.com.hk/purchase-switch2
-[harness] price captured: HKD 3,700
-[slm] wrote a search query: Nintendo Switch 2 Pro Controller -> 'Nintendo Switch 2 Pro Controller price Hong Kong'
-[harness] reading page: https://store.nintendo.com.hk/00000000000069
-[harness] price captured: HKD 538
-[harness] price data assembled: {"Nintendo Switch 2 console": {...}, "Nintendo Switch 2 Pro Controller": {...}}
-[slm] called the add tool: add with {'a': 3700, 'b': 538}
-[slm] add tool returned: 4238
-[slm] wrote the final answer: The total cost is HKD 4238.
-[harness] writing the report: output/run_20261018_152058.md
-[done] report saved to .../output/run_20261018_152058.md
-```
+![mcp tool calling output](../screenshot/mcp_tool_calling.png)
 
-A full run takes **about 15–20 seconds** on this machine (Vulkan GPU; on CPU only it is slower but still works). The result file `output/run_<timestamp>.md` is the thing you just learned to build. Its timeline (18 steps) mixes `Harness (code)` and `AI agent (SLM)` rows together, exactly matching the `step()` calls in the code — compare the two side by side.
+(Each line starts with `[harness]` or `[slm]` — who did that step. Notice the two search queries the SLM wrote, the two prices the harness captured, the `add` tool call with the real price numbers, and the final answer.)
+
+A full run takes **about 15–40 seconds** on this machine (Vulkan GPU; on CPU only it is slower but still works). The result file `output/run_<timestamp>.md` is the thing you just learned to build. Its timeline (18 steps) mixes `Harness (code)` and `AI agent (SLM)` rows together, exactly matching the `step()` calls in the code — compare the two side by side.
 
 ### Reproduce checklist
 
 - [ ] The environment from [Chapter 0](./00_environment_setup.md) is fully checked
-- [ ] `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` exists (the model file lives in the project's `model/` folder)
+- [ ] `model/Qwen3.5-0.8B-BF16.gguf` exists (the model file lives in the project's `model/` folder)
 - [ ] `output/` folder exists (the script creates it if missing)
 - [ ] Run command uses `-X utf8` and `-u`
 - [ ] Watch the live log: you should see both servers start, two queries, two prices, one `add` call
-- [ ] Result: **"The total cost is HKD 4238."** and a fresh `output/run_*.md`
+- [ ] Result: **"The total cost will be HKD 4,238."** (exact wording can vary slightly between runs) and a fresh `output/run_*.md`
 
 If prices differ on the day you run it — that's fine, the store may have changed them; what this project delivers is the *pipeline*.
 
@@ -619,7 +632,7 @@ If prices differ on the day you run it — that's fine, the store may have chang
 
 ## 4.11 What you learned / where this goes
 
-- A working **free, local "search + read + answer" pipeline**: DuckDuckGo MCP (search) + Playwright MCP (browser) + regex extraction + a local E2B SLM for the tiny text jobs — zero API keys, zero cost.
+- A working **free, local "search + read + answer" pipeline**: DuckDuckGo MCP (search) + Playwright MCP (browser) + regex extraction + a local 0.8B SLM for the tiny text jobs — zero API keys, zero cost.
 - The **code-first harness** pattern: the SLM does 3 text jobs; code does everything else.
 - Real proof of small-model limits (arithmetic, attention, prompt effects) and the fixes (tools, examples, neutral prompts, hints chosen by code).
 - A complete record system: every step labeled with who did it, timed, and written into the Markdown report.

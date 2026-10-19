@@ -16,9 +16,9 @@ By the end of this guide you will have built, run, and understood this:
 
 **And this comes out** — a real answer built from the *official store's live prices*, plus a complete Markdown run report:
 
-> **The total cost is HKD 4238.**
+> **The total cost will be HKD 4,238.**
 
-The final run produces a file like [`output/run_20261018_152058.md`](../output/run_20261018_152058.md) — open it now to see your end goal: tables listing every MCP server, every tool call, every step ("who did what": code vs. the SLM), the extracted price data, and the final answer.
+The final run produces a file like [`output/run_20261019_231403.md`](../output/run_20261019_231403.md) — open it now to see your end goal: tables listing every MCP server, every tool call, every step ("who did what": code vs. the SLM), the extracted price data, and the final answer.
 
 Everything runs **on your own computer**. No API keys. No cloud. No cost.
 
@@ -31,9 +31,9 @@ We wanted a local AI assistant that can answer questions about current web data 
 - **DuckDuckGo MCP server** — free web search (`search`), no API key.
 - **Playwright MCP server** — a real browser that reads pages `fetch_content`-style fetchers cannot: the official Nintendo HK store is protected by an AWS WAF JavaScript challenge, which blocks every plain HTTP fetcher (we verified this — see [Chapter 3.5](./03_mcp_client.md#35-the-discovery-that-shaped-the-project-fetch_content-is-not-enough)).
 
-The tool combination becomes the "hands" of a **local small language model** (Gemma 4 E2B, compressed so it runs even without a GPU) — reproducing the "ask an LLM → it searches → it answers" experience at zero cost.
+The tool combination becomes the "hands" of a **local small language model** (Qwen3.5-0.8B — a small model that runs even without a GPU) — reproducing the "ask an LLM → it searches → it answers" experience at zero cost.
 
-And one big honest lesson, documented in depth in [Chapter 4.6](./04_mcp_tool_calling.md#46-the-small-model-limitation-story): an E2B model is *not* a self-working agent that can plan and finish a whole task alone. It took rounds of redesign (a→b→c→d) before the architecture settled: **the SLM gets only the small text jobs; everything else is forced by code** — the *harness*. That discovery is half the value of this project.
+And one big honest lesson, documented in depth in [Chapter 4.6](./04_mcp_tool_calling.md#46-the-small-model-limitation-story): a 0.8B model is *not* a self-working agent that can plan and finish a whole task alone. It took many rounds of testing and redesign before the architecture settled: **the SLM gets only the small text jobs; everything else is forced by code** — the *harness*. That discovery is half the value of this project.
 
 ---
 
@@ -44,7 +44,7 @@ Read in order. Each chapter is complete on its own: read the code, run it, check
 | # | Chapter | What you build / learn | You will... |
 |---|---|---|---|
 | 0 | [Environment setup](./00_environment_setup.md) | Python, uv, Node.js, `@playwright/mcp`, the model file | Verify every piece is working |
-| 1 | [Your first local SLM](./01_basic_chat.md) | `src/basic_chat.py` — running the model locally, JSON-forced answers, memory | Talk to Gemma 4 E2B on your machine |
+| 1 | [Your first local SLM](./01_basic_chat.md) | `src/basic_chat.py` — running the model locally, JSON-forced answers, memory | Talk to Qwen3.5-0.8B on your machine |
 | 2 | [Tool calling](./02_basic_tool_calling.md) | `src/basic_tool_calling.py` — `@tool`, the tool-calling loop, two-stage pattern | Make the model call Python functions |
 | 3 | [MCP client](./03_mcp_client.md) | `src/mcp_client.py` — connecting servers, listing tools, the WAF discovery | Talk to real MCP servers |
 | 4 | [The full pipeline](./04_mcp_tool_calling.md) | `src/mcp_tool_calling.py` — the code-first harness, price extraction, the md report | Reproduce the final output |
@@ -67,8 +67,8 @@ Each chapter ends with **Experiments** — small on-purpose changes that break t
 
 | Term | Meaning |
 |---|---|
-| **SLM / LLM** | A language model. This project's model (Gemma 4 E2B) is "small": 2.3B *effective* parameters ("parameters" = numbers inside the model, more = smarter but heavier; the "E" in E2B means "effective": the file holds ~5B numbers, but only 2.3B do the heavy computing work — the rest are quick-lookup tables). Compressed so it runs even without a GPU |
-| **GGUF** | Single-file model format for running models locally. Our file is `UD-Q2_K_XL` — a compressed ~2-bit version, small enough to run on an ordinary CPU |
+| **SLM / LLM** | A language model. This project's model (Qwen3.5-0.8B) is "small": 0.8B parameters ("parameters" = numbers inside the model, more = smarter but heavier). Runs in full precision (BF16) on an ordinary CPU — no GPU needed |
+| **GGUF** | Single-file model format for running models locally. Our file is `Qwen3.5-0.8B-BF16.gguf` — a full-precision 0.8B model, small enough to run on an ordinary CPU |
 | **Token** | The unit models read/write (≈ ¾ of a word); all limits are in tokens |
 | **Context (`n_ctx`)** | How many tokens the model can hold at once; bigger = heavier |
 | **Sampler** | Rules for choosing the next token — randomness (`temperature`) and allowed output shape (JSON schema) |
@@ -105,7 +105,7 @@ Each chapter ends with **Experiments** — small on-purpose changes that break t
 - nobodywho (the engine that runs the model locally): [docs](https://docs.nobodywho.ai/python/) · [tool calling docs](https://docs.nobodywho.ai/python/tool-calling/) · [GitHub](https://github.com/nobodywho-ooo/nobodywho) · [PyPI](https://pypi.org/project/nobodywho/)
 - DuckDuckGo MCP server: [GitHub](https://github.com/nickclyde/duckduckgo-mcp-server) · [PyPI](https://pypi.org/project/duckduckgo-mcp-server/)
 - Playwright MCP: [GitHub](https://github.com/microsoft/playwright-mcp) · [npm](https://www.npmjs.com/package/@playwright/mcp) · [Playwright docs](https://playwright.dev/docs/getting-started-mcp)
-- The model: [unsloth/gemma-4-E2B-it-qat-GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF)
+- The model: [unsloth/Qwen3.5-0.8B-GGUF](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF) · [Qwen/Qwen3.5-0.8B (official page)](https://huggingface.co/Qwen/Qwen3.5-0.8B)
 - The tools we install: [Python](https://www.python.org/downloads/) · [uv](https://docs.astral.sh/uv/) · [Node.js](https://nodejs.org/) · [VS Code](https://code.visualstudio.com/)
 
 ---

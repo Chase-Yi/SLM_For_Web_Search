@@ -8,9 +8,9 @@ The end goal of this project: give a **small language model running entirely on 
 
 > *"How much does it cost to buy a Nintendo Switch 2 and a Pro Controller in Hong Kong?"*
 
-This is the familiar behavior of big cloud assistants: you ask a question, the assistant quietly calls a search API, reads the results, and answers with current, real-world information. This project explores whether that *entire experience* can be reproduced **locally** — a Gemma 4 E2B model (2.3B *effective* parameters, small enough to run even without a GPU) combined with free MCP web-search tools — at **zero cost**, with no API keys and no cloud services.
+This is the familiar behavior of big cloud assistants: you ask a question, the assistant quietly calls a search API, reads the results, and answers with current, real-world information. This project explores whether that *entire experience* can be reproduced **locally** — a Qwen3.5-0.8B model (0.8B parameters — small enough to run even without a GPU) combined with free MCP web-search tools — at **zero cost**, with no API keys and no cloud services.
 
-Along the way, the project became a hands-on study of small-model limits: what this E2B model reliably *can* do (write a short search query, list product names, phrase one sentence) and what it clearly *cannot* (arithmetic, multi-step planning, staying on task). Everything you see here — the "code-first harness" architecture — is the result of that exploration, and the [study guide](docs/study_guide.md) documents every step of the journey.
+Along the way, the project became a hands-on study of small-model limits: what this 0.8B model reliably *can* do (list product names, write a short search query, call a tool when told directly) and what it clearly *cannot* (arithmetic — it got 2 of 6 test sums wrong; long, conditional instructions — it ignores them; multi-step planning). Everything you see here — the "code-first harness" architecture — is the result of that exploration, and the [study guide](docs/study_guide.md) documents every step of the journey.
 
 ## Demo — what the finished pipeline does
 
@@ -20,19 +20,19 @@ Ask the demo question:
 
 Get (built live from the official store's pages, running entirely on your machine):
 
-> **The total cost is HKD 4238.**
+> **The total cost will be HKD 4,238.**
 
-…plus a complete [run report](output/run_20261018_152058.md) that records every step, every tool call, and every decision — written automatically to `output/run_<timestamp>.md` at the end of each run.
+…plus a complete [run report](output/run_20261019_231403.md) that records every step, every tool call, and every decision — written automatically to `output/run_<timestamp>.md` at the end of each run.
 
 ```mermaid
 flowchart TB
     Q[User question] --> H[Harness · plain Python code\ndrives every step]
-    H -->|"1 · ask SLM to list the products<br/>2 · ask SLM to write a search query per product"| S1[Local SLM · Gemma 4 E2B\nwrites the search queries]
+    H -->|"1 · ask SLM to list the products<br/>2 · ask SLM to write a search query per product"| S1[Local SLM · Qwen3.5 0.8B\nwrites the search queries]
     H -->|"3 · search + keep only official store URLs"| DDG[DuckDuckGo MCP server\nfree web search · no API key]
     H -->|"4 · browse the official pages"| PW[Playwright MCP server\nreal browser · passes the WAF challenge]
     H -->|"5 · extract the price with a text pattern (regex)"| P["Prices found:\nHKD 3,700 + HKD 538"]
-    P -->|"6 · ask SLM to use the addition tool (Python add(a,b))"| S2[Local SLM · Gemma 4 E2B\nwrites the final answer]
-    S2 --> A["Final answer: The total cost is HKD 4238\n+ output/run_*.md report"]
+    P -->|"6 · ask SLM to use the addition tool (Python add(a,b))"| S2[Local SLM · Qwen3.5 0.8B\nwrites the final answer]
+    S2 --> A["Final answer: The total cost will be HKD 4,238\n+ output/run_*.md report"]
 ```
 
 ---
@@ -46,15 +46,15 @@ Answering questions about *current* web data normally means building and maintai
    - **`@playwright/mcp`** → a real browser (`browser_navigate`, `browser_evaluate`).
 2. **Know why both are needed.** The DuckDuckGo server's `fetch_content` tool is a *plain page downloader* — it downloads the page like a plain file and never runs the page's JavaScript. The official Nintendo Hong Kong store sits behind an **AWS WAF JavaScript challenge** (a security check that only works if JavaScript runs): plain downloaders receive a challenge page and **0 useful content** (verified during development). Only a real browser passes it. So: search with DuckDuckGo, read pages with Playwright — each server covers the other's weakness.
 3. **Drive the tool combination with a local SLM.** The pipeline reproduces the familiar "LLM searches the web and answers" experience at **zero cost**, fully offline except the web requests themselves.
-4. **Be honest about small-model limits.** Development showed that the E2B model cannot work like an independent agent — one that plans and completes the whole task alone: it fails at arithmetic, ignores list requests, and gets confused by system prompts. The final architecture is therefore a **code-first harness**: the SLM does only three small text jobs (list the products, write search queries, write the final sentence — using the *addition tool*, the tiny Python `add(a, b)` function, for the math), and **code forces everything else** — searching, URL filtering, browsing, price extraction, retries, adding up the prices, reporting. The full debugging story (rounds a→b→c→d) is in [Chapter 4.6 of the study guide](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story).
+4. **Be honest about small-model limits.** Development showed that the 0.8B model cannot work like an independent agent — one that plans and completes the whole task alone: it makes arithmetic mistakes, ignores long conditional instructions, and drops off-format when the system prompt is written for a different job. The final architecture is therefore a **code-first harness**: the SLM does only three small text jobs (list the products, write search queries, write the final sentence — calling the *addition tool*, the tiny Python `add(a, b)` function, for the math), and **code forces everything else** — searching, URL filtering, browsing, price extraction, retries, adding up the prices, reporting. The tests and fixes are written down one by one in [Chapter 4.6 of the study guide](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story).
 
 ## Why this model?
 
-`gemma-4-E2B-it` compressed ("quantized") to **UD-Q2_K_XL** (from [unsloth/gemma-4-E2B-it-qat-GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF)): a **2.3B *effective*-parameter** model — the "E" in E2B stands for "effective": the file holds about 5B numbers in total, but only the 2.3B effective ones do the heavy computing work; the rest are large lookup tables that cost almost nothing to use ("parameters" are the numbers inside the model — more means smarter but heavier) — made small enough to run on an **ordinary CPU laptop**. The point: *anyone* — with or without a GPU — can reproduce this project's results, or use the same small model as a starting point for exploring what local SLMs can do.
+**Qwen3.5-0.8B** in full precision (BF16, from [unsloth/Qwen3.5-0.8B-GGUF](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF); the official base model is [Qwen/Qwen3.5-0.8B](https://huggingface.co/Qwen/Qwen3.5-0.8B)): 0.8B parameters ("parameters" are the numbers inside the model — more means smarter but heavier) — the smallest model of Alibaba's Qwen3.5 family, published under the Apache-2.0 license. The whole model is one ~1.5 GB file, small enough to run on an **ordinary CPU laptop**, and its hybrid design (mostly efficient linear-attention layers, with a full-attention layer every few blocks) keeps long-context processing cheap. The point: *anyone* — with or without a GPU — can reproduce this project's results, or use the same small model as a starting point for exploring what local SLMs can do.
 
 ## What the final run produces
 
-Every run ends with a Markdown report in [`output/`](output/): which MCP servers started and *all* tools they offered, a numbered table of every MCP tool call (arguments, output, duration), an 18-step timeline with **"Who did what"** (Harness vs. SLM) and the exact tool used per step, the extracted price data as JSON, and the final reply. See the example: [`output/run_20261018_152058.md`](output/run_20261018_152058.md).
+Every run ends with a Markdown report in [`output/`](output/): which MCP servers started and *all* tools they offered, a numbered table of every MCP tool call (arguments, output, duration), an 18-step timeline with **"Who did what"** (Harness vs. SLM) and the exact tool used per step, the extracted price data as JSON, and the final reply. See the example: [`output/run_20261019_231403.md`](output/run_20261019_231403.md).
 
 ---
 
@@ -71,9 +71,9 @@ uv pip install -r requirements.txt
 npm install -g @playwright/mcp
 ```
 
-**3. Download the model file** — click the link below, then save the downloaded file **into the `model/` folder**, keeping the name `gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` (the folder ships a `README.txt` with the same instructions):
+**3. Download the model file** — click the link below, then save the downloaded file **into the `model/` folder**, keeping the name `Qwen3.5-0.8B-BF16.gguf` (the folder ships a `README.txt` with the same instructions):
 
-> **[➜ Download gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf](https://huggingface.co/unsloth/gemma-4-E2B-it-qat-GGUF/resolve/main/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf?download=true)**
+> **[➜ Download Qwen3.5-0.8B-BF16.gguf](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-BF16.gguf?download=true)**
 
 ```powershell
 # 4. Verify: both MCP servers should start and list their tools
@@ -114,16 +114,18 @@ This repo is also a **tutorial series**. For Python beginners, read in order:
 
 ## Key findings (the honest version)
 
-- **An E2B SLM cannot do arithmetic reliably** (`2150 + 449` → it answered `2150` in every variant we tried). Fix: an *addition tool* — the Python function `add(a, b)` computes the exact total, the model just calls it. Never let a small model compute totals.
-- **Small models need format examples, not long descriptions.** "List every product, one per line" produced only *one* line; a single example with different products (PS5!) fixed it 3 out of 3 runs.
-- **A system prompt written for one job can ruin another job.** "You write short web search queries" broke the product-listing job; a neutral prompt fixed both.
+- **A small model cannot be trusted with arithmetic.** In a direct test, the model got **2 of 6 sums wrong** (`4786 + 3769` → `8545`, correct is `8555`; `1245 + 8799` → `9944`, correct is `10044`) — with confident, well-reasoned-looking answers. Fix: an *addition tool* — the Python function `add(a, b)` computes the exact total, the model just calls it, and the report records the call and its result. Never let a small model compute totals.
+- **Weak models obey short, direct commands — long conditional instructions get skipped.** The long add-tool hint ("You MUST call the add tool with the exact price numbers…") was ignored and the model did its own arithmetic; the short "Call the add tool now with a and b from the price data above." got the tool call in every verified run.
+- **Small models need examples, not descriptions.** The product-listing job carries one short example (with different products — PS5!) that pins the exact output format: one product per line. The example products never leak into the answers (verified across runs).
+- **A system prompt written for one job can ruin another job.** Under a query-writer system prompt ("You write short web search queries. Reply with the query text only."), the product-listing job collapsed to a single line (`console + controller` instead of two clean lines). One neutral system prompt fixed both jobs: "Follow the instruction exactly and reply with the requested lines only."
+- **Retries must restate the fact that matters.** After a failed lookup, a generic "write a different query" produced the *other* product's query; adding "Write a different query for the same product. The product name is X." kept the retry on target (verified in a run where one item never resolved).
 - **JSON-schema samplers and tool calling cannot be used together** — the JSON grammar blocks the special tokens that tool calls need. Use two stages: tool chat (default sampler) + summary chat (schema sampler).
 - **WAF-protected pages need a real browser.** DuckDuckGo's `fetch_content` (and other plain fetchers) cannot pass JavaScript challenges; Playwright can.
-- **Give the SLM clean ASCII text only** (ASCII = plain English letters, digits, and punctuation). Page text that contained Chinese characters made the model invent facts (hallucinate); passing a single regex-extracted price text like `HKD 3,700` fixed it.
+- **Give the SLM tiny, exact text only** (ASCII = plain English letters, digits, and punctuation). The page text never reaches the model — the harness reduces each page to one regex-extracted price like `HKD 3,700`, and converts it to a bare number (`3700`) before the tool call.
 
 ## Discussion — what a bigger model could change
 
-Look back at the architecture diagram and notice how much of it is **forced by code**: the official-domain filter in the query, the URL selection (`official_product_urls()`), the price regex (a text pattern, `extract_price_line()`), the 3-attempt retry rule, the code-chosen final hint, and the code-computed total. None of that is what an "AI agent" is *supposed* to do — it is the harness making up for what an E2B model clearly cannot do ([Chapter 4.6](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story)).
+Look back at the architecture diagram and notice how much of it is **forced by code**: the official-domain filter in the query, the URL selection (`official_product_urls()`), the price regex (a text pattern, `extract_price_line()`), the 3-attempt retry rule, the code-chosen final hint, and the code-computed total. None of that is what an "AI agent" is *supposed* to do — it is the harness making up for what a 0.8B model clearly cannot do ([Chapter 4.6](docs/04_mcp_tool_calling.md#46-the-small-model-limitation-story)).
 
 That raises the natural question this project leaves open for you to explore:
 
@@ -148,7 +150,7 @@ This project started on purpose from the **smallest** useful model, to find the 
 
 ## References
 
-[MCP](https://modelcontextprotocol.io/) · [MCP client tutorial](https://modelcontextprotocol.io/docs/develop/build-client) · [nobodywho docs](https://docs.nobodywho.ai/python/) · [nobodywho tool calling](https://docs.nobodywho.ai/python/tool-calling/) · [nobodywho GitHub](https://github.com/nobodywho-ooo/nobodywho) · [duckduckgo-mcp-server](https://github.com/nickclyde/duckduckgo-mcp-server) · [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
+[MCP](https://modelcontextprotocol.io/) · [MCP client tutorial](https://modelcontextprotocol.io/docs/develop/build-client) · [nobodywho docs](https://docs.nobodywho.ai/python/) · [nobodywho tool calling](https://docs.nobodywho.ai/python/tool-calling/) · [nobodywho GitHub](https://github.com/nobodywho-ooo/nobodywho) · [duckduckgo-mcp-server](https://github.com/nickclyde/duckduckgo-mcp-server) · [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) · [Qwen3.5-0.8B (model)](https://huggingface.co/Qwen/Qwen3.5-0.8B) · [unsloth Qwen3.5-0.8B GGUF](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF)
 
 ---
 

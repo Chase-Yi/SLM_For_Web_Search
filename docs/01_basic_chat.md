@@ -8,7 +8,7 @@ In this chapter you meet the "brain" of the whole project: a small language mode
 src/basic_chat.py
 ```
 
-> **Before you run this chapter:** the model file must be downloaded and placed at `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` (that is Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file)). Every script in this project loads the model from that exact path.
+> **Before you run this chapter:** the model file must be downloaded and placed at `model/Qwen3.5-0.8B-BF16.gguf` (that is Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file)). Every script in this project loads the model from that exact path.
 
 ---
 
@@ -16,15 +16,15 @@ src/basic_chat.py
 
 | Term | Meaning in one line |
 |---|---|
-| **SLM / LLM** | The neural network that reads text and writes text (here: Gemma 4 E2B — 2.3B *effective* parameters, "small") |
+| **SLM / LLM** | The neural network that reads text and writes text (here: Qwen3.5-0.8B — 0.8B parameters, "small") |
 | **GGUF** | A file format that packs an entire model into one file so it can run locally |
-| **Quantization** | Compressing the model's numbers to fewer bits (we use "Q2", ~2-bit) → smaller file, runs on CPU, slightly dumber |
+| **Quantization** | Compressing the model's numbers to fewer bits → smaller file, slightly less accurate. (This project runs the model in full precision — BF16 — no compression needed: the model itself is tiny) |
 | **Token** | The unit models think in — roughly ¾ of a word. Everything (context, limits) is measured in tokens |
 | **Context window (`n_ctx`)** | How many tokens the model can "keep in mind" at once, including the whole conversation |
 | **Sampler** | The rules for picking each next token: how random (`temperature`), and what shape the output may have (JSON schema) |
 | **System prompt** | The standing instruction that tells the model how to behave |
 
-> **About the name "E2B":** the "E" stands for "effective". The model file holds about 5B numbers, but only **2.3B** of them ("effective parameters") do the heavy computing; the rest are large lookup tables that cost almost nothing to use. That is why a file this size runs as light as a 2.3B model.
+> **About this model:** "0.8B" means the model holds about 800 million parameters — "parameters" are the numbers inside the model; more of them means smarter but heavier. Qwen3.5-0.8B is the smallest model of Alibaba's Qwen3.5 family (Apache-2.0 license), and its hybrid design (mostly efficient linear-attention layers, with a full-attention layer every fourth block) keeps long-context processing cheap. This project uses its text ability only.
 
 Reference: nobodywho Python docs — https://docs.nobodywho.ai/python/ (chapters: Getting started, Chat, Sampling, Tool calling).
 
@@ -116,12 +116,12 @@ Three important details:
 if __name__ == "__main__":
     project_root = Path(__file__).resolve().parent.parent
 
-    model_path = project_root / "model" / "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf"
+    model_path = project_root / "model" / "Qwen3.5-0.8B-BF16.gguf"
 
     model = Model(model_path)
 ```
 
-- `Path(__file__).resolve().parent.parent` = the project root, computed from the script's own location. Run the script from anywhere and it still finds the model — which must live at `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` inside the project. **This pattern appears in every file of the project.**
+- `Path(__file__).resolve().parent.parent` = the project root, computed from the script's own location. Run the script from anywhere and it still finds the model — which must live at `model/Qwen3.5-0.8B-BF16.gguf` inside the project. **This pattern appears in every file of the project.**
 
 ```python
     output_schema = {
@@ -149,14 +149,21 @@ Result: every reply is *guaranteed* to be JSON that Python can parse. This is ho
     Write your reasoning in the "reasoning" field, 
     and your final reply in the "answer" field.
     When the Previous Conversation is provided,
-    must use it when answering user's question.
+    it is the only source of facts about the user.
+    Remember the details the user shares (such as their name),
+    and reuse them in later replies.
+    If the user asks about themselves 
+    (for example "Who am I?" or "What is my name?"),
+    answer with the name from the Previous Conversation,
+    and nothing else.
     """
 ```
 
-Two instructions worth noticing:
+Three things worth noticing:
 
 - We tell the model to really use the two fields.
-- **"When the Previous Conversation is provided, must use it…"** — the phrase `Previous Conversation` here is exactly the same as the text label `invoke()` adds in front of the question. Because the words match, the small model actually uses the history; without this line it tends to ignore the history (try removing it later and watch "Who am I?" fail).
+- **"When the Previous Conversation is provided, …"** — the phrase `Previous Conversation` here is exactly the same as the text label `invoke()` adds in front of the question. Because the words match, the small model actually uses the history; without this line it tends to ignore the history.
+- **The identity rule** spells out the exact question forms ("Who am I?", "What is my name?") and what the answer should be (the name from the Previous Conversation). A 0.8B model needs this level of explicit detail — with a softer wording it answers about itself instead (try removing this rule in the experiments below).
 
 ```python
     slm = SLM(...)
@@ -182,14 +189,15 @@ Turn 1 stores a fact. We then build a plain-text history string and pass it to t
 uv run --python ".venv" python -X utf8 src/basic_chat.py
 ```
 
-First run is slow (the model file is loaded and pushed to GPU/CPU memory). Expected output:
+First run is slow (the model file is loaded and pushed to GPU/CPU memory). Expected output (from a real run on this machine):
 
 ![basic chat output](../screenshot/basic_chat.png)
 
 Look at what the model did:
 
-- Turn 1: `reasoning` explains that the user only stated a name; `answer` greets Chase.
-- Turn 2: `"Based on the previous conversation, you are Chase."` — **the memory worked.**
+- Turn 1: `reasoning` explains the identity rule; the answer is simply `Chase`.
+- Turn 2: the model reads the name from the Previous Conversation — **the memory worked.**
+- One honest detail: the `reasoning` text is not perfectly tidy — in Turn 1 it even references the example question from the system prompt instead of the actual message. A 0.8B model's thinking is not always clean; the answers are what matter — and both are correct.
 
 Both replies are valid JSON exactly because the sampler forced the shape.
 
@@ -197,9 +205,9 @@ Both replies are valid JSON exactly because the sampler forced the shape.
 
 ## 1.4 Experiments (do these!)
 
-1. **Break the memory on purpose.** Remove the line `When the Previous Conversation is provided, must use it when answering user's question.` from the system prompt, run again, and watch "Who am I?" turn into a meaningless "I am Gemma…" answer about the model itself. Put it back. Lesson: small models need clear, direct instructions about the history text you add.
+1. **Break the memory on purpose.** Remove the three lines that mention the user from the system prompt (from `When the Previous Conversation is provided` to `and nothing else.`), run again, and watch "Who am I?" turn into a meaningless "I am Qwen3.5, a large language model…" answer about the model itself (verified). Put it back. Lesson: small models need clear, direct instructions about the history text you add — and the more exactly the question forms are spelled out, the more reliably the model obeys.
 2. **Raise the temperature.** Change `temperature(0.1)` to `temperature(1.0)` and run twice. The `reasoning` starts changing between runs; answers get more creative — and less reliable.
-3. **Ask simple math.** Replace the prompts with `What is 2150 + 449?` (keep the JSON schema). Note the answer. Keep this result in mind — in [Chapter 4](./04_mcp_tool_calling.md) it becomes a central lesson.
+3. **Ask simple math.** Replace the prompts with `What is 2150 + 449?` (keep the JSON schema). Note the answer (`2599` when we tried). Keep this result in mind — in [Chapter 4](./04_mcp_tool_calling.md) arithmetic becomes a central lesson: simple sums often come out right, but not always (Chapter 4's test got 2 of 6 sums wrong).
 4. **Count tokens.** Add `print(len(slm.chat.tokenize("Hello world")) - 1)` — see how a short sentence becomes tokens.
 
 ---

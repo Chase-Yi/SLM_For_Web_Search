@@ -10,7 +10,7 @@ In this chapter, the model gets two pretend "price" tools and answers three ques
 src/basic_tool_calling.py
 ```
 
-> **Before you run this chapter:** the script loads the model file from `model/gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf` — if you have not downloaded it yet, do Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file) first.
+> **Before you run this chapter:** the script loads the model file from `model/Qwen3.5-0.8B-BF16.gguf` — if you have not downloaded it yet, do Step 3 of [Chapter 0](./00_environment_setup.md#step-3--download-the-model-file) first.
 
 ---
 
@@ -166,7 +166,7 @@ and the main loop defines exactly what to say:
     """
 ```
 
-See what this does: it **names the tools and tells the model which tool to use for each kind of question**. Without this, the E2B model sometimes just answers from memory (making up a price). With it, tool selection is reliable.
+See what this does: it **names the tools and tells the model which tool to use for each kind of question**. Without this, the model sometimes just answers from memory (making up a price). With it, tool selection is reliable.
 
 The third question gets the opposite hint:
 
@@ -225,7 +225,7 @@ For each turn:
 uv run --python ".venv" python -X utf8 src/basic_tool_calling.py
 ```
 
-Expected output — Q1 and Q2:
+Expected output — Q1 and Q2 (from a real run on this machine):
 
 ![basic tool calling 1](../screenshot/basic_tool_calling_1.png)
 
